@@ -11,10 +11,16 @@ class AuthController extends Controller
     // Tampilkan halaman login
     public function index()
     {
-        // Jika sudah login sebagai admin, langsung arahkan ke dashboard
-        if (Auth::check() && Auth::user()->role === 'admin') {
-            return redirect()->route('admin.dashboard');
+        // Jika sudah login, arahkan sesuai role masing-masing
+        if (Auth::check()) {
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            } elseif (Auth::user()->role === 'pegawai') {
+                return redirect()->route('pegawai.beranda');
+            }
         }
+        
+        // Jika belum login, tampilkan form login utama
         return view('admin.auth.login');
     }
 
@@ -30,19 +36,24 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            // Cek apakah yang login benar-benar admin
+            // Generate session baru untuk keamanan
+            $request->session()->regenerate();
+
+            // Pengecekan Role sebagai Pengatur Lalu Lintas
             if (Auth::user()->role === 'admin') {
-                $request->session()->regenerate();
                 return redirect()->intended(route('admin.dashboard'))
-                    ->with('success', 'Selamat datang kembali, Admin!');
+                    ->with('success', 'Selamat datang kembali, Administrator!');
+            } elseif (Auth::user()->role === 'pegawai') {
+                return redirect()->intended(route('pegawai.beranda'))
+                    ->with('success', 'Selamat datang, selamat bekerja!');
             }
 
-            // Jika bukan admin (misal pegawai mencoba login di portal admin)
+            // Fallback (Jaga-jaga jika ada user tanpa role yang jelas)
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return back()->with('error', 'Akses ditolak! Portal ini khusus Administrator.');
+            return back()->with('error', 'Akses ditolak! Role akun tidak valid.');
         }
 
         return back()->with('error', 'Email atau Password yang Anda masukkan salah.');

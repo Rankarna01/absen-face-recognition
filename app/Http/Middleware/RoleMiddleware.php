@@ -16,9 +16,8 @@ class RoleMiddleware
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            
-            return redirect()->route('admin.login')
-                ->with('error', 'Akses ditolak! Anda tidak memiliki izin ke halaman ini.');
+            return redirect()->route('login')
+                ->with('error', 'Akses ditolak! Sesi Anda telah berakhir atau tidak valid.');
         }
 
         return $next($request);
