@@ -17,6 +17,8 @@ class SettingController extends Controller
             'default_jam_masuk' => '08:00',
             'default_jam_pulang' => '17:00',
             'toleransi_keterlambatan' => 15,
+            'nominal_potongan_telat' => 10000, // Default denda telat 10rb
+            'nominal_potongan_alfa' => 50000,  // Default denda tidak hadir 50rb
             'office_latitude' => '3.595196',
             'office_longitude' => '98.672226',
             'office_radius' => 50
@@ -35,6 +37,8 @@ class SettingController extends Controller
             'default_jam_masuk' => 'required',
             'default_jam_pulang' => 'required',
             'toleransi_keterlambatan' => 'required|numeric|min:0',
+            'nominal_potongan_telat' => 'required|numeric|min:0',
+            'nominal_potongan_alfa' => 'required|numeric|min:0',
             'office_latitude' => 'required',
             'office_longitude' => 'required',
             'office_radius' => 'required|numeric|min:10',

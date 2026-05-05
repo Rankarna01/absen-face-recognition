@@ -9,7 +9,7 @@
     <div class="bg-base p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h3 class="font-bold text-xl text-secondary">Pengaturan Utama</h3>
-            <p class="text-sm text-gray-500 mt-1">Konfigurasi logo, jam kerja, batas toleransi, dan GPS lokasi absen.</p>
+            <p class="text-sm text-gray-500 mt-1">Konfigurasi logo, jam kerja, batas toleransi, nominal denda, dan GPS lokasi absen.</p>
         </div>
         <button @click="submitForm()" class="bg-primary hover:bg-primary_hover text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-lg shadow-primary/30">
             <span x-show="isLoading"><i class="fa-solid fa-spinner fa-spin"></i></span>
@@ -24,7 +24,7 @@
                 <i class="fa-solid fa-building"></i> Profil Perusahaan
             </button>
             <button @click="activeTab = 'absensi'" :class="activeTab === 'absensi' ? 'bg-primary/10 text-primary font-bold border-r-4 border-primary' : 'text-gray-600 hover:bg-gray-50'" class="w-full text-left px-4 py-3 rounded-l-xl text-sm transition flex items-center gap-3">
-                <i class="fa-solid fa-clock"></i> Aturan Jam Kerja
+                <i class="fa-solid fa-clock"></i> Absen & Potongan
             </button>
             <button @click="activeTab = 'gps'" :class="activeTab === 'gps' ? 'bg-primary/10 text-primary font-bold border-r-4 border-primary' : 'text-gray-600 hover:bg-gray-50'" class="w-full text-left px-4 py-3 rounded-l-xl text-sm transition flex items-center gap-3">
                 <i class="fa-solid fa-map-location-dot"></i> Lokasi Kantor (GPS)
@@ -65,7 +65,7 @@
                     </div>
                 </div>
 
-                <!-- TAB 2: ABSENSI -->
+                <!-- TAB 2: ABSENSI & POTONGAN -->
                 <div x-show="activeTab === 'absensi'" x-cloak x-transition.opacity class="space-y-6">
                     <h4 class="font-bold text-lg border-b border-gray-100 pb-2 mb-4">Aturan Jam Kerja Default</h4>
                     
@@ -80,7 +80,7 @@
                         </div>
                     </div>
 
-                    <div>
+                    <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Toleransi Keterlambatan (Menit)</label>
                         <div class="flex items-center gap-3">
                             <input type="number" name="toleransi_keterlambatan" value="{{ $setting->toleransi_keterlambatan }}" class="w-32 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-lg text-center font-bold">
@@ -88,6 +88,30 @@
                         </div>
                         <p class="text-xs text-gray-400 mt-2">Contoh: Jika jam masuk 08:00 dan toleransi 15 menit, maka absen di atas 08:15 akan dihitung Terlambat.</p>
                     </div>
+
+                    <!-- PENAMBAHAN: NOMINAL POTONGAN -->
+                    <h4 class="font-bold text-lg border-b border-gray-100 pb-2 mb-4 mt-8">Aturan Potongan Gaji (Denda)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Denda Terlambat (Per Hari)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 font-medium">Rp</span>
+                                </div>
+                                <input type="number" name="nominal_potongan_telat" value="{{ $setting->nominal_potongan_telat }}" class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-lg font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Denda Tidak Hadir / Alfa (Per Hari)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 font-medium">Rp</span>
+                                </div>
+                                <input type="number" name="nominal_potongan_alfa" value="{{ $setting->nominal_potongan_alfa }}" class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-lg font-mono text-red-600">
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Nominal ini akan otomatis dikalikan dengan jumlah akumulasi terlambat/alfa saat proses Generate Gaji (Payroll) dilakukan.</p>
                 </div>
 
                 <!-- TAB 3: GPS LOKASI -->
@@ -160,14 +184,14 @@
 
                 $.ajax({
                     url: '{{ route("admin.pengaturan.update") }}',
-                    type: 'POST', // Walaupun update, FormData wajib POST (Laravel akan handle)
+                    type: 'POST', 
                     data: formData,
                     processData: false,
                     contentType: false,
                     success: (res) => {
                         this.isLoading = false;
                         Toast.fire({ icon: 'success', title: res.message });
-                        setTimeout(() => location.reload(), 1500); // Reload untuk melihat logo baru (jika ada)
+                        setTimeout(() => location.reload(), 1500); 
                     },
                     error: (xhr) => {
                         this.isLoading = false;
@@ -177,7 +201,6 @@
                 });
             },
 
-            // Fitur Keren: Ambil GPS Otomatis
             getGPSLocation() {
                 if (navigator.geolocation) {
                     Toast.fire({ icon: 'info', title: 'Mendapatkan koordinat GPS...', timer: 2000 });
@@ -192,7 +215,7 @@
                             if(error.code == error.PERMISSION_DENIED) errorMsg = 'Izin akses lokasi (GPS) ditolak browser.';
                             Toast.fire({ icon: 'error', title: errorMsg });
                         },
-                        { enableHighAccuracy: true } // Paksa akurasi tinggi
+                        { enableHighAccuracy: true }
                     );
                 } else {
                     Toast.fire({ icon: 'error', title: 'Browser Anda tidak mendukung GPS!' });

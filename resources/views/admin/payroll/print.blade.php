@@ -106,6 +106,12 @@
                         <span class="text-gray-600">Keterlambatan ({{ $payroll->jumlah_telat }}x)</span>
                         <span class="font-semibold text-red-500">- Rp {{ number_format($payroll->potongan_telat, 0, ',', '.') }}</span>
                     </div>
+                    
+                    <!-- TAMBAHAN: Menampilkan potongan Alfa/Tidak Hadir -->
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Tidak Hadir / Alfa ({{ $payroll->jumlah_alfa ?? 0 }}x)</span>
+                        <span class="font-semibold text-red-500">- Rp {{ number_format($payroll->potongan_alfa ?? 0, 0, ',', '.') }}</span>
+                    </div>
                 </div>
             </div>
         </div>

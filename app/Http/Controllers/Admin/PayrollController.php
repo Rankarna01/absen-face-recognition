@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Payroll;
 use App\Models\User;
 use App\Models\Attendance;
+use App\Models\Setting; // Wajib import model Setting
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -26,7 +27,7 @@ class PayrollController extends Controller
         return view('admin.payroll.index', compact('payrolls', 'employees', 'periode'));
     }
 
-    // Fungsi Generate Gaji (Otomatis hitung telat)
+    // Fungsi Generate Gaji (Otomatis hitung telat & alfa dinamis)
     public function generate(Request $request)
     {
         $request->validate([
@@ -42,21 +43,40 @@ class PayrollController extends Controller
             $year = substr($request->periode, 0, 4);
             $month = substr($request->periode, 5, 2);
 
-            // 2. Hitung jumlah telat dari tabel absensi di bulan tersebut
+            // 2. Ambil Nominal Potongan Dinamis dari Pengaturan (Settings)
+            $setting = Setting::first();
+            $dendaPerTelat = $setting->nominal_potongan_telat ?? 0;
+            $dendaPerAlfa = $setting->nominal_potongan_alfa ?? 0;
+
+            // 3. Hitung jumlah telat dari tabel absensi di bulan tersebut
             $jumlahTelat = Attendance::where('user_id', $request->user_id)
                                      ->whereYear('tanggal', $year)
                                      ->whereMonth('tanggal', $month)
                                      ->where('status_kehadiran', 'terlambat')
                                      ->count();
 
-            // 3. Rumus Denda Telat (Misal: Rp 50.000 per hari telat)
-            $dendaPerTelat = 50000;
+            // 4. Hitung jumlah alfa (tidak hadir) dari tabel absensi
+            $jumlahAlfa = Attendance::where('user_id', $request->user_id)
+                                    ->whereYear('tanggal', $year)
+                                    ->whereMonth('tanggal', $month)
+                                    ->where('status_kehadiran', 'alfa')
+                                    ->count();
+
+            // 5. Rumus Total Potongan
             $potonganTelat = $jumlahTelat * $dendaPerTelat;
+            $potonganAlfa = $jumlahAlfa * $dendaPerAlfa;
 
-            // 4. Hitung Total Gaji Bersih
-            $totalBersih = ($request->gaji_pokok + $request->tunjangan + $request->bonus) - $potonganTelat;
+            // 6. Hitung Total Gaji Bersih
+            // Pemasukan dikurang total potongan (telat + alfa)
+            $totalPemasukan = $request->gaji_pokok + $request->tunjangan + $request->bonus;
+            $totalBersih = $totalPemasukan - ($potonganTelat + $potonganAlfa);
 
-            // 5. Simpan ke database (Update jika periode & user sama, Create jika belum ada)
+            // Cegah gaji minus jika potongan lebih besar dari pemasukan
+            if ($totalBersih < 0) {
+                $totalBersih = 0; 
+            }
+
+            // 7. Simpan ke database (Update jika periode & user sama, Create jika belum ada)
             Payroll::updateOrCreate(
                 [
                     'user_id' => $request->user_id,
@@ -68,12 +88,14 @@ class PayrollController extends Controller
                     'bonus' => $request->bonus,
                     'jumlah_telat' => $jumlahTelat,
                     'potongan_telat' => $potonganTelat,
+                    'jumlah_alfa' => $jumlahAlfa,   // Simpan riwayat jumlah alfa
+                    'potongan_alfa' => $potonganAlfa, // Simpan riwayat potongan alfa
                     'total_bersih' => $totalBersih,
                     'status' => 'draft' // Default status
                 ]
             );
 
-            return response()->json(['status' => 'success', 'message' => 'Gaji berhasil di-generate dan dihitung!']);
+            return response()->json(['status' => 'success', 'message' => 'Gaji berhasil di-generate dan potongan otomatis dihitung!']);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
