@@ -7,7 +7,7 @@
 <div class="flex justify-between items-end mb-8">
     <div>
         <p class="text-gray-500">Selamat datang kembali,</p>
-        <h2 class="text-2xl font-bold text-secondary">Administrator</h2>
+        <h2 class="text-2xl font-bold text-secondary">{{ Auth::user()->name ?? 'Administrator' }}</h2>
         <p class="text-sm text-gray-400 mt-1">Berikut ringkasan aktivitas hari ini.</p>
     </div>
     <div class="bg-base px-4 py-2 rounded-lg border border-gray-100 flex items-center gap-2 text-sm text-gray-600 shadow-sm">
@@ -26,10 +26,10 @@
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500">Total Karyawan</p>
-                <h3 class="text-2xl font-bold text-secondary">128</h3>
+                <h3 class="text-2xl font-bold text-secondary">{{ $totalKaryawan }}</h3>
             </div>
         </div>
-        <p class="text-xs text-gray-500">Semua Karyawan</p>
+        <p class="text-xs text-gray-500">Semua Karyawan Aktif</p>
     </div>
 
     <!-- Card Hadir -->
@@ -39,11 +39,11 @@
                 <i class="fa-solid fa-user-check"></i>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">Hadir Hari Ini</p>
-                <h3 class="text-2xl font-bold text-secondary">92</h3>
+                <p class="text-sm font-medium text-gray-500">Hadir Tepat Waktu</p>
+                <h3 class="text-2xl font-bold text-secondary">{{ $hadir }}</h3>
             </div>
         </div>
-        <p class="text-xs text-gray-400">72% dari total karyawan</p>
+        <p class="text-xs text-gray-400">{{ $persenHadir }}% dari total karyawan</p>
     </div>
 
     <!-- Card Terlambat -->
@@ -54,10 +54,10 @@
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500">Terlambat</p>
-                <h3 class="text-2xl font-bold text-secondary">18</h3>
+                <h3 class="text-2xl font-bold text-secondary">{{ $terlambat }}</h3>
             </div>
         </div>
-        <p class="text-xs text-gray-400">14% dari total karyawan</p>
+        <p class="text-xs text-gray-400">{{ $persenTerlambat }}% dari total karyawan</p>
     </div>
 
     <!-- Card Tidak Hadir -->
@@ -67,11 +67,11 @@
                 <i class="fa-solid fa-user-xmark"></i>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">Tidak Hadir</p>
-                <h3 class="text-2xl font-bold text-secondary">18</h3>
+                <p class="text-sm font-medium text-gray-500">Belum / Tidak Hadir</p>
+                <h3 class="text-2xl font-bold text-secondary">{{ $tidakHadir }}</h3>
             </div>
         </div>
-        <p class="text-xs text-gray-400">14% dari total karyawan</p>
+        <p class="text-xs text-gray-400">{{ $persenTidakHadir }}% dari total karyawan</p>
     </div>
 </div>
 
@@ -89,12 +89,12 @@
     </div>
     
     <div class="bg-base p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center items-center">
-        <h3 class="font-semibold text-secondary w-full text-left mb-4">Ringkasan Kehadiran</h3>
+        <h3 class="font-semibold text-secondary w-full text-left mb-4">Ringkasan Hari Ini</h3>
         <div class="w-48 h-48 relative">
             <canvas id="doughnutChart"></canvas>
             <div class="absolute inset-0 flex flex-col items-center justify-center mt-2">
-                <span class="text-2xl font-bold">128</span>
-                <span class="text-xs text-gray-400">Karyawan</span>
+                <span class="text-2xl font-bold">{{ $totalKaryawan }}</span>
+                <span class="text-xs text-gray-400">Total</span>
             </div>
         </div>
     </div>
@@ -103,30 +103,42 @@
 
 @push('scripts')
 <script>
-    // Dummy Data untuk Chart.js (Bisa kamu dinamiskan dari Controller nantinya)
+    // Memasukkan data PHP langsung ke dalam JavaScript
+    const weeklyDataFromDB = @json($weeklyData);
+    const doughnutDataFromDB = @json([$hadir, $terlambat, $tidakHadir]);
+
+    // Bar Chart
     const ctxBar = document.getElementById('barChart').getContext('2d');
     new Chart(ctxBar, {
         type: 'bar',
         data: {
-            labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+            labels: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'],
             datasets: [{
-                label: 'Kehadiran',
-                data: [85, 70, 80, 90, 75, 40, 20],
-                backgroundColor: '#60A5FA', // Warna biru muda sesuai desain
+                label: 'Total Kehadiran',
+                data: weeklyDataFromDB, // Data dinamis
+                backgroundColor: '#60A5FA', 
                 borderRadius: 4,
                 barThickness: 12
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } }
+        options: { 
+            responsive: true, 
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                y: { beginAtZero: true, grid: { display: false }, ticks: { stepSize: 1 } }, 
+                x: { grid: { display: false } } 
+            } 
+        }
     });
 
+    // Doughnut Chart
     const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
     new Chart(ctxDoughnut, {
         type: 'doughnut',
         data: {
-            labels: ['Hadir', 'Terlambat', 'Tidak Hadir'],
+            labels: ['Hadir', 'Terlambat', 'Belum / Tidak Hadir'],
             datasets: [{
-                data: [92, 18, 18],
+                data: doughnutDataFromDB, // Data dinamis
                 backgroundColor: ['#22C55E', '#F5A623', '#EF4444'],
                 borderWidth: 0,
                 cutout: '80%'

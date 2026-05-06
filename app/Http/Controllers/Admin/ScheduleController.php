@@ -11,27 +11,25 @@ use Carbon\Carbon;
 
 class ScheduleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $periode = $request->periode ?? Carbon::now()->format('Y-m');
+        $tahun = substr($periode, 0, 4);
+        $bulan = substr($periode, 5, 2);
+
         $employees = User::where('role', 'pegawai')->orderBy('name')->get();
         $shifts = Shift::all();
         
-        // Format data untuk FullCalendar.js
-        $schedules = Schedule::with(['user', 'shift'])->get()->map(function($sched) {
-            return [
-                'id' => $sched->id,
-                'title' => $sched->user->name . ' (' . $sched->shift->nama_shift . ')',
-                'start' => $sched->tanggal,
-                'color' => $sched->shift->warna ?? '#F5A623',
-                'extendedProps' => [
-                    'jam' => substr($sched->shift->jam_masuk, 0, 5) . ' - ' . substr($sched->shift->jam_pulang, 0, 5),
-                    'nama' => $sched->user->name,
-                    'shift' => $sched->shift->nama_shift
-                ]
-            ];
-        });
+        $schedules = Schedule::with(['user', 'shift'])
+                             ->whereMonth('tanggal', $bulan)
+                             ->whereYear('tanggal', $tahun)
+                             ->get();
 
-        return view('admin.schedule.index', compact('employees', 'shifts', 'schedules'));
+        // PERBAIKAN: Ambil SEMUA data libur agar saat kalender di-next/prev bulan, 
+        // tanggal merahnya tetap muncul tanpa harus refresh halaman.
+        $holidays = \App\Models\Holiday::all();
+
+        return view('admin.schedule.index', compact('employees', 'shifts', 'schedules', 'periode', 'holidays'));
     }
 
     // Fungsi Simpan Master Shift
@@ -50,30 +48,50 @@ class ScheduleController extends Controller
     public function assignSchedule(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'shift_id' => 'required|exists:shifts,id',
+            'user_id' => 'required',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'is_libur' => 'nullable',
+            'keterangan_libur' => 'nullable|string',
+            'shift_id' => 'required_without:is_libur', // Shift wajib jika bukan hari libur
         ]);
 
-        $startDate = Carbon::parse($request->tanggal_mulai);
-        $endDate = Carbon::parse($request->tanggal_selesai);
+        try {
+            $startDate = Carbon::parse($request->tanggal_mulai);
+            $endDate = Carbon::parse($request->tanggal_selesai);
+            
+            // Tangkap nilai boolean is_libur dengan aman
+            $isLibur = $request->has('is_libur') && ($request->is_libur == 'true' || $request->is_libur == 'on' || $request->is_libur == 1);
 
-        // Looping untuk assign jadwal dari tanggal mulai ke selesai
-        for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
-            Schedule::updateOrCreate(
-                ['user_id' => $request->user_id, 'tanggal' => $date->toDateString()],
-                ['shift_id' => $request->shift_id]
-            );
+            for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
+                Schedule::updateOrCreate(
+                    [
+                        'user_id' => $request->user_id,
+                        'tanggal' => $date->toDateString(),
+                    ],
+                    [
+                        // Jika libur, kosongkan shift_id (null)
+                        'shift_id' => $isLibur ? null : $request->shift_id,
+                        'is_libur' => $isLibur,
+                        'keterangan_libur' => $isLibur ? $request->keterangan_libur : null
+                    ]
+                );
+            }
+
+            return response()->json(['status' => 'success', 'message' => 'Jadwal berhasil di-assign!']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
-
-        return response()->json(['status' => 'success', 'message' => 'Jadwal berhasil di-assign!']);
     }
 
     // Fungsi Hapus Jadwal (Saat event di kalender diklik)
-    public function destroySchedule($id)
+    public function destroy($id)
     {
-        Schedule::findOrFail($id)->delete();
-        return response()->json(['status' => 'success', 'message' => 'Jadwal berhasil dihapus!']);
+        try {
+            Schedule::findOrFail($id)->delete();
+            return response()->json(['status' => 'success', 'message' => 'Jadwal berhasil dihapus!']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal menghapus jadwal.'], 500);
+        }
     }
 }

@@ -91,6 +91,10 @@
                 <a href="{{ route('admin.jadwal.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ request()->routeIs('admin.jadwal.*') ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-500 hover:bg-gray-50' }}">
                     <i class="fa-regular fa-calendar-days w-5"></i> Jadwal Kerja
                 </a>
+                <a href="{{ route('admin.holiday.index') }}"
+    class="flex items-center gap-3 px-4 py-3 rounded-xl {{ request()->routeIs('admin.holiday.*') ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-500 hover:bg-gray-50' }}">
+    <i class="fa-solid fa-calendar-day w-5"></i> Master Hari Libur
+</a>
                 <a href="{{ route('admin.pengajuan.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ request()->routeIs('admin.pengajuan.*') ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-500 hover:bg-gray-50' }}">
                     <i class="fa-solid fa-envelope-open-text w-5"></i> Pengajuan Izin
                 </a>

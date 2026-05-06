@@ -77,6 +77,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     
     // Manajemen User
     Route::resource('users', App\Http\Controllers\Admin\UserController::class)->except(['create', 'show']);
+
+    // Pastikan ini ada di DALAM Route::group admin kamu ya
+Route::get('/hari-libur', [App\Http\Controllers\Admin\HolidayController::class, 'index'])->name('holiday.index');
+Route::post('/hari-libur', [App\Http\Controllers\Admin\HolidayController::class, 'store'])->name('holiday.store');
+Route::delete('/hari-libur/{id}', [App\Http\Controllers\Admin\HolidayController::class, 'destroy'])->name('holiday.destroy');
 });
 
 
@@ -102,5 +107,6 @@ Route::prefix('pegawai')->name('pegawai.')->middleware(['auth', 'role:pegawai'])
     Route::post('/profil/password', [App\Http\Controllers\Pegawai\ProfileController::class, 'updatePassword'])->name('profil.password');
     Route::get('/laporan', [App\Http\Controllers\Pegawai\ReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/export', [App\Http\Controllers\Pegawai\ReportController::class, 'export'])->name('laporan.export');
+   
     
 });
