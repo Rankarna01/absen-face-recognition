@@ -24,10 +24,11 @@ class FaceRegistrationController extends Controller
         ]);
 
         try {
-            // Update kolom face_descriptor di tabel employees berdasarkan user_id
-            Employee::where('user_id', $request->user_id)->update([
-                'face_descriptor' => $request->face_descriptor
-            ]);
+            // Gunakan updateOrCreate untuk menghindari error jika relasi employee belum ada
+            Employee::updateOrCreate(
+                ['user_id' => $request->user_id],
+                ['face_descriptor' => $request->face_descriptor]
+            );
 
             return response()->json([
                 'status' => 'success', 
